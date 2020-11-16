@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Gesture Detector</title>
+		
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+		<link type="text/css" rel="stylesheet" href="./CSS/SLIS_Style.css" />
+	</head>
+
+	<body>
+
+		<div id="main">
+
+			<div id="createGestureBlock">
+				<form id="formGestureCreation">
+					<input type="text" id="NameofNewgesture" value="Gesture List" maxlength="15" autocomplete="off"/>
+					
+				</form>
+				<img src="./Images/create-arrow.png" />
+			</div>
+			
+			<ul id="listofGestures"></ul>
+			<div id="outputDisplayText"></div>
+			<div id="areaOfRendering"></div>
+		</div>
+
+
+
+		<div id="shadeOverlay"></div>
+
+		<div id="overlay">
+			<div>
+				<p>To use the <b id="exporting-gesture-name"></b> gesture, copy the text in the text area below and import it into a <b>GestureMaker.Controller</b> using the <b>fromJSON</b> function:</p>
+				
+				<p id="sample-import-code">
+					var trainer = new GestureMaker.Controller();
+					<br/>
+					trainer.fromJSON('<i id="exporting-gesture-sample-text"></i>');
+				</p>
+			</div>
+			<div>
+				<textarea id="export-text"></textarea>
+				
+				<input type="button" id="retrain-gesture" value="Retrain" class="button"/>
+				<input type="button" id="close-overlay" value="Close" class="button"/>
+			</div>
+		</div>
+		
+		<div id="warningWebGL"><b>WARNING:</b> Your browser does not support WebGL. Rendering quality is limited and gesture trails are disabled.</div>
+		
+	</body>
+
+	<!-- WebGL Libraries -->
+	<script src="./WebGL_Libraries/jquery.min.js"> </script>
+	<script src="./WebGL_Libraries/three.min.js"></script>
+	<script src="./WebGL_Libraries/detector.js"></script>
+	<script src="./WebGL_Libraries/tween.js"></script>
+	<script src="./WebGL_Libraries/orbit-controls.js"></script>
+	<!-- Leap Motion API -->
+	<script src="./Leap_Motion_Library/leap.js"></script>
+	<!-- Include Javascript code -->
+	<script src="./leaptrainer.js"></script>
+	<script src="./leaptrainer-ui.js"></script>
+	<script src="./Recognition_Algorithms/cross-correlation.js"></script>
+	
+	
+</html>
