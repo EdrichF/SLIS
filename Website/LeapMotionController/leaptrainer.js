@@ -44,7 +44,7 @@ var GestureMaker = {};
 		Class.extend 				= arguments.callee; //And make this class extendable
 		Class.overidden 			= prop; 			//And store the list of overridden fields
 
-		return Class;
+		return Class; 
 	};
 })();
 
@@ -55,7 +55,6 @@ var GestureMaker = {};
 GestureMaker.Controller = Class.extend({
 	
 	controller				: null,	// An instance of Leap.Controller from the leap.js library.  This will be created if not passed as an option
-	pauseOnWindowBlur		: false, // If this is TRUE, then recording and recognition are paused when the window loses the focus, and restarted when it's regained
 	minRecordingVelocity	: 300,	// The minimum velocity a frame needs to clock in at to trigger gesture recording, or below to stop gesture recording (by default)
 	maxRecordingVelocity	: 30,	// The maximum velocity a frame can measure at and still trigger pose recording, or above which to stop pose recording (by default)
 	minGestureFrames		: 5,	// The minimum number of recorded frames considered as possibly containing a recognisable gesture 
@@ -63,16 +62,12 @@ GestureMaker.Controller = Class.extend({
 	recordedPoseFrames		: 0,	// A counter for recording how many pose frames have been recorded before triggering
 	recordingPose			: false,// A flag to indicate if a pose is currently being recorded
 	hitThreshold			: 0.65,	// The correlation output value above which a gesture is considered recognized. Raise this to make matching more strict
-	trainingCountdown		: 3,	// The number of seconds after startTraining is called that training begins. This number of 'training-countdown' events will be emit.
-	trainingGestures		: 1,	// The number of gestures samples that collected during training
-	convolutionFactor		: 0,	// The factor by which training samples will be convolved over a gaussian distribution to expand the available training data
 	downtime				: 1000,	// The number of milliseconds after a gesture is identified before another gesture recording cycle can begin
 	lastHit					: 0,	// The timestamp at which the last gesture was identified (recognized or not), used when calculating downtime
 	gestures				: {},	// The current set of recorded gestures - names mapped to convolved training data
 	poses					: {},	// Though all gesture data is stored in the gestures object, here we hold flags indicating which gestures were recorded as poses
-	trainingGesture			: null, // The name of the gesture currently being trained, or null if training is not active
 	listeners				: {},	// Listeners registered to receive events emit from the trainer - event names mapped to arrays of listener functions
-	paused					: false,// This variable is set by the pause() method and unset by the resume() method - when true it disables frame monitoring temporarily.
+	paused					: false,//  When true it disables frame monitoring temporarily.
 	renderableGesture		: null, // Implementations that record a gestures for graphical rendering should store the data for the last detected gesture in this array.
 	
 	/**
@@ -97,7 +92,7 @@ GestureMaker.Controller = Class.extend({
 	onFrame: function () {},
 
 	//The following function is used to monitor activity coming from the leap motion by binding a listerner to the controller.
-	//It also triggers the follow events: Gesture detect, startRecording and stopRecording.	
+	//It also triggers the follow events: Gesture detect	
 	bindFrameListener: function () {
 
 		var recording = false, frameCount = 0, gesture = [],
@@ -114,10 +109,9 @@ GestureMaker.Controller = Class.extend({
 			
 			//The recordableFrame function return true or false. when true recording should start or the current frame should be added to the recording.
 			//When false and the recording is still running the recording has completed and the type of recognition function should be called.
-
 			if (this.recordableFrame(frame, this.minRecordingVelocity, this.maxRecordingVelocity)) {
 
-				//If it is the first frame for a gesture, the runing values are cleaned up and the startRecording event is triggerd.
+				//If it is the first frame for a gesture, the runing values are cleaned up.
 				if (!recording) { 	
 					recording 				= true; 
 					frameCount 				= 0; 
@@ -129,52 +123,27 @@ GestureMaker.Controller = Class.extend({
 				//The amount of frames is counted that are recorded in a gesture to check that the frame count is greater than the minimum gesture frames.
 				frameCount++;
 	
-				/*
-				 * The recordFrame function may be overridden, but in any case it's passed the current frame, the previous frame, and 
-				 * utility functions for adding vectors and individual values to the recorded gesture activity.
-				 */
-				//
+				
+				// The recordFrame function may be overridden, but in any case it's passed the current frame, the previous frame, and 
+ 				//utility functions for adding vectors and individual values to the recorded gesture activity.
 				this.recordFrame(frame, recordedGestureVector);
 
-				/*
-				 * Since renderable frame data is not necessarily the same as frame data used for recognition, a renderable frame will be 
-				 * recorded here IF the implementation provides one.
-				 */
-				this.recordRenderableFrame(frame);
+				
 				
 			} else if (recording) {
 
-				/*
-				 * If the frame should not be recorded but recording was active, then we deactivate recording and check to see if enough 
-				 * frames have been recorded to qualify for gesture recognition.
-				 */
+				 // If the frame should not be recorded but recording was active, then we deactivate recording and check to see if enough 
+				 // frames have been recorded to qualify for gesture recognition.
 				recording = false;
-				
-				/*
-				 * As soon as we're no longer recording, we fire the 'stopped-recording' event
-				 */
-				
-	
 				if (this.recordingPose || frameCount >= this.minGestureFrames) {
 
-					/*
-					 * If a valid gesture was detected the 'gesture-detected' event fires, regardless of whether the gesture will be recognized or not.
-					 */
+					// If a valid gesture was detected the 'gesture-detected' event fires, regardless of whether the gesture will be recognized or not.
 					this.fire('gesture-detected', gesture, frameCount);
+		
 					
-					/*
-					 * Finally we pass the recorded gesture frames to either the saveTrainingGesture or recognize functions (either of which may also 
-					 * be overridden) depending on whether we're currently training a gesture or not.
-					 * the time of the last hit.
-					 */
-					var gestureName = this.trainingGesture;
-
-					if (gestureName) { this.saveTrainingGesture(gestureName, gesture, this.recordingPose);
-
-					} else { this.recognize(gesture, frameCount); }
-
+					 // Finally we pass the recorded gesture frames to the recognize functions.
+					this.recognize(gesture, frameCount); 
 					this.lastHit = new Date().getTime();
-
 					this.recordingPose 		= false;
 				};
 			};
@@ -187,212 +156,81 @@ GestureMaker.Controller = Class.extend({
 	},
 	
 	/**
-	 * This function returns TRUE if the provided frame should trigger recording and FALSE if it should stop recording.  
-	 * 
-	 * Of course, if the system isn't already recording, returning FALSE does nothing, and vice versa.. So really it returns 
-	 * whether or not a frame may possibly be part of a gesture.
-	 * 
-	 * By default this function makes its decision based on one or more hands or fingers in the frame moving faster than the 
-	 * configured minRecordingVelocity, which is provided as a second parameter.
-	 * 
 	 * @param frame
 	 * @param min
 	 * @returns {Boolean}
 	 */
 	recordableFrame: function (frame, min, max) {
-
 		var hands = frame.hands, j, hand, fingers, palmVelocity, tipVelocity, poseRecordable = false;
 		
 		for (var i = 0, l = hands.length; i < l; i++) {
-			
 			hand = hands[i];
-
 			palmVelocity = hand.palmVelocity;
-
 			palmVelocity = Math.max(Math.abs(palmVelocity[0]), Math.abs(palmVelocity[1]), Math.abs(palmVelocity[2]));
 			
-			/*
-			 * We return true if there is a hand moving above the minimum recording velocity
-			 */
+			// If the hand moving above the minimum recording velocity, return true
 			if (palmVelocity >= min) { return true; }
-			
 			if (palmVelocity <= max) { poseRecordable = true; break; }
-			
-			fingers = hand.fingers;
-			
+			fingers = hand.fingers
 			for (j = 0, k = fingers.length; j < k; j++) {
-
 				tipVelocity = fingers[j].tipVelocity;
-
 				tipVelocity = Math.max(Math.abs(tipVelocity[0]), Math.abs(tipVelocity[1]), Math.abs(tipVelocity[2]));
 				
-				/*
-				 * Or if there's a finger tip moving above the minimum recording velocity
-				 */
+				// If the finger tip is moving above the minimum recording velocity, return true.
 				if (tipVelocity >= min) { return true; }
-				
 				if (tipVelocity <= max) { poseRecordable = true; break; }
 			};	
 		};
 
-		/*
-		 * A configurable number of frames have to hit as pose recordable before actual recording is triggered.
-		 */
+		// A configurable number of frames have to hit as pose recordable before actual recording is triggered.
 		if (poseRecordable) {
-			
 			this.recordedPoseFrames++;
-			
 			if (this.recordedPoseFrames >= this.minPoseFrames) {
-
 				this.recordingPose = true;
-				
 				return true;
 			}
-
 		} else {
-			
 			this.recordedPoseFrames = 0;
 		}
 	},
 	
 	/**
-	 * This function is called for each frame during gesture recording, and it is responsible for adding values in frames using the provided 
-	 * recordVector and recordValue functions (which accept a 3-value numeric array and a single numeric value respectively).
-	 * 
-	 * This function should be overridden to modify the quality and quantity of data recorded for gesture recognition.
-	 * 
 	 * @param frame
 	 * @param recordVector
 	 */
 	recordFrame: function(frame, recordVector) {
-		
 		var hands		= frame.hands;
 		var handCount 	= hands.length;
-
 		var hand, finger, fingers, fingerCount;
 
 		for (var i = 0, l = handCount; i < l; i++) {
-			
 			hand = hands[i];
-
 			recordVector(hand.stabilizedPalmPosition);
-
 			fingers 	= hand.fingers;
 			fingerCount = fingers.length;
-			
 			for (var j = 0, k = fingerCount; j < k; j++) {
-				
 				finger = fingers[j];
-
 				recordVector(finger.stabilizedTipPosition);	
 			};
 		};
 	},
 	
-	/**
-	 * This function records a single frame in a format suited for graphical rendering.  Since the recordFrame function will capture 
-	 * data suitable for whatever recognition algorithm is implemented, that data is not necessarily relating to geometric positioning 
-	 * of detected hands and fingers.  Consequently, this function should capture this geometric data.
-	 * 
-	 * Currently, only the last recorded gesture is stored - so this function should just write to the renderableGesture array.
-	 * 
-	 * Any format can be used - but the format expected by the GestureMaker UI is - for each hand:
-	 * 
-	 * 	{	position: 	[x, y, z], 
-	 * 	 	direction: 	[x, y, z], 
-	 * 	 	palmNormal	[x, y, z], 
-	 * 
-	 * 		fingers: 	[ { position: [x, y, z], direction: [x, y, z], length: q },
-	 * 					  { position: [x, y, z], direction: [x, y, z], length: q },
-	 * 					  ... ]
-	 *  }
-	 *  
-	 *  So a frame containing two hands would push an array with two objects like that above into the renderableGesture array.
-	 * 
-	 * @param frame
-	 * @param lastFrame
-	 * @param recordVector
-	 * @param recordValue
-	 */
-	recordRenderableFrame: function(frame) {
-		
-		var frameData = [];
-		
-		var hands		= frame.hands;
-		var handCount 	= hands.length;
-
-		var hand, finger, fingers, fingerCount, handData, fingersData;
-		
-		for (var i = 0, l = handCount; i < l; i++) {
-			
-			hand = hands[i];
-
-			handData = {position: hand.stabilizedPalmPosition, direction: hand.direction, palmNormal: hand.palmNormal};
-
-			fingers 	= hand.fingers;
-			fingerCount = fingers.length;
-			
-			fingersData = [];
-
-			for (var j = 0, k = fingerCount; j < k; j++) {
-				
-				finger = fingers[j];
-
-				fingersData.push({position: finger.stabilizedTipPosition, direction: finger.direction, length: finger.length});
-			};
-			
-			handData.fingers = fingersData;
-			
-			frameData.push(handData);
-		};
-		
-		this.renderableGesture.push(frameData);
-	},
-	
-	/**
-	 * This function is called to create a new gesture, and - normally - trigger training for that gesture.  
-	 * 
-	 * The parameter gesture name is added to the gestures array and unless the trainLater parameter is present, the startRecording 
-	 * function below is triggered.
-	 * 
-	 * This function fires the 'gesture-created' event.
-	 * 
+	// This function is called to add the previously saved gestures. 
+	// This function fires the 'gestureAdded' event.
+	/** 
 	 * @param gestureName
 	 * @param trainLater
 	 */
 	create: function(gestureName) {
-		
 		this.gestures[gestureName] 	= [];
-		
 		this.fire('gestureAdded', gestureName);
-
-		
 	},
 
-	
 	/**
-	 * This function matches a parameter gesture against the known set of saved gestures.  
-	 * 
-	 * This function does not need to return any value, but it should fire either the 'gesture-recognized' or 
-	 * the 'gesture-unknown' event.  
-	 * 
-	 * The 'gesture-recognized' event includes a numeric value for the closest match, the name of the recognized 
-	 * gesture, and a list of hit values for all known gestures as parameters.  The list maps gesture names to 
-	 * hit values.
-	 * 
-	 * The 'gesture-unknown' event, includes a list of gesture names mapped to hit values for all known gestures 
-	 * as a parameter.
-	 * 
-	 * If a gesture is recognized, an event with the name of the gesture and no parameters will also be fired. So 
-	 * listeners waiting for a 'Punch' gestures, for example, can just register for events using: 
-	 * 
-	 * 		trainer.on('Punch').
-	 * 
 	 * @param gesture
 	 * @param frameCount
 	 */
 	recognize: function(gesture, frameCount) {
-
 		var gestures 			= this.gestures,
 			threshold			= this.hitThreshold,
 			allHits				= {},
@@ -402,168 +240,104 @@ GestureMaker.Controller = Class.extend({
 			closestGestureName	= null,
 			recognizingPose		= (frameCount == 1); //Single-frame recordings are idenfied as poses
 
-		/*
-		 * We cycle through all known gestures
-		 */
+		// Cycle through all known gestures
 		for (var gestureName in gestures) {
 
-			/*
-			 * We don't actually attempt to compare gestures to poses
-			 */
+			// Don't attempt to compare gestures to poses
 			if (this.poses[gestureName] != recognizingPose) { 
-				
 				hit = 0.0;
-				
-			} else {
+			}else {
 
-				/*
-				 * For each know gesture we generate a correlation value between the parameter gesture and a saved 
-				 * set of training gestures. This correlation value is a numeric value between 0.0 and 1.0 describing how similar 
-				 * this gesture is to the training set.
-				 */
+				
+				// For each know gesture we generate a correlation value between the parameter gesture and a saved 
+				// set of training gestures. This correlation value is a numeric value between 0.0 and 1.0 describing how similar 
+				// this gesture is to the training set.
 				hit = this.correlate(gestureName, gestures[gestureName], gesture);				
 			}
 
-			/*
-			 * Each hit is recorded
-			 */
+			// Each hit is recorded
 			allHits[gestureName] = hit;
 			
-			/*
-			 * If the hit is equal to or greater than the configured hitThreshold, the gesture is considered a match.
-			 */
+			//If the hit is equal to or greater than the configured hitThreshold, the gesture is considered a match.
 			if (hit >= threshold) { recognized = true; }
 
-			/*
-			 * If the hit is higher than the best hit so far, this gesture is stored as the closest match.
-			 */
+			// If the hit is higher than the best hit so far, this gesture is stored as the closest match.
 			if (hit > bestHit) { bestHit = hit; closestGestureName = gestureName; }
 		}
-
 		if (recognized) { 
-
 			this.fire('gesture-recognized', bestHit, closestGestureName, allHits);
-
 			this.fire(closestGestureName); 
-		
-		} else {
-		
+		}else{
 			this.fire('gesture-unknown', allHits);
 		}
 	},
 
+	// This function accepts a set of training gestures and a newly input gesture and produces a number between 0.0 and 1.0 describing how closely the input gesture resembles the set of training gestures. 
+	// The default implementation uses a GestureMaker.TemplateMatcher to perform correlation.
 	/**
-	 * This function accepts a set of training gestures and a newly input gesture and produces a number between 0.0 and 1.0 describing 
-	 * how closely the input gesture resembles the set of training gestures.
-	 * 
-	 * This DEFAULT implementation uses a GestureMaker.TemplateMatcher to perform correlation.
-	 * 
 	 * @param gestureName
 	 * @param trainingGestures
 	 * @param gesture
 	 * @returns {Number}
 	 */
 	correlate: function(gestureName, trainingGestures, gesture) { 
-
 		gesture = this.templateMatcher.process(gesture);
-
 		var nearest = +Infinity, foundMatch = false, distance;
 
 		for (var i = 0, l = trainingGestures.length; i < l; i++) {
-			
 			distance = this.templateMatcher.match(gesture, trainingGestures[i]);
-			
 			if (distance < nearest) {
-
-				/*
-				 * 'distance' here is the calculated distance between the parameter gesture and the training 
-				 * gesture - so the smallest value indicates the closest match
-				 */
+				//The distance calculated between the saved gesture and the parameter gesture.
 				nearest = distance;
-
 				foundMatch = true;
 			}
 		}
-
 		return (!foundMatch) ? 0.0 : (Math.min(parseInt(100 * Math.max(nearest - 4.0) / -4.0, 0.0), 100)/100.0);
 	},
 
-
-	
+	//This is a simple import function for restoring gestures.
 	/**
-	 * This is a simple import function for restoring gestures exported using the toJSON function above.
-	 * 
-	 * It returns the object parsed out of the JSON, so that overriding implementations can make use of this function.
-	 * 
 	 * @param json
 	 * @returns {Object}
 	 */
 	fromJSON: function(json) {
-
 		var imp = JSON.parse(json);
-		
 		var gestureName = imp.name;
-		
 		this.create(gestureName, true);
-		
 		this.gestures[gestureName] = imp.data;
-		
 		this.poses[gestureName] = imp.pose;
-		
 		return imp;
 	},
 
+	// This is a standard event registration event paired with the fire event below, it provides an event-oriented mechanism for notifying external components when significant events happen.
 	/**
-	 * This is a standard event registration event - paired with the fire event below, it provides an event-oriented 
-	 * mechanism for notifying external components when significant events happen - gestures being matching, training 
-	 * cycles starting and ending, etc.
-	 * 
 	 * @param event
 	 * @param listener
-	 * @returns {Object} The leaptrainer controller, for chaining.
+	 * @returns {Object} 
 	 */
 	on: function(event, listener) {
-		
 		var listening = this.listeners[event];
-		
 		if (!listening) { listening = []; }
-		
 		listening.push(listener);
-		
 		this.listeners[event] = listening;
-		
 		return this;
 	},
 	
-
-	
-	/**
-	 * This function is called in various function above in order to notify listening components when the events they're 
-	 * registered to hear occur.
-	 * 
-	 * This function accepts an arbitrary number of arguments, all of which will be passed on to listening functions except the 
-	 * first (so not quite arbitrary.. (arbitrary + 1)), which is the name of the event being fired.
-	 * 
+	// This function is called in various function above in order to notify listening components when the events they're registered to hear occur.
+	 /** 
 	 * @param event
-	 * @returns {Object} The leaptrainer controller, for chaining.
+	 * @returns {Object} 
 	 */
 	fire: function(event) {
-		
 		var listening = this.listeners[event];
 		
 		if (listening) { 
-			
 			var args = Array.prototype.slice.call(arguments);
-
 			args.shift();
-
 			for (var i = 0, l = listening.length; i < l; i++) { listening[i].apply(this, args); }
 		}
-		
 		return this;
 	},
-
-
 });
 
 

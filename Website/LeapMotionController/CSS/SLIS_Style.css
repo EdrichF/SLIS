@@ -8,7 +8,6 @@ body 				{ font-family: Calibri; margin: 0px; -ms-touch-action: none; overflow-x
 
 #createGestureBlock 		{ height: 50px; background: purple; margin: 22px 0px 0px 0px; padding-left: 22px; width: 318px; position: absolute; z-index: 9999; }
 #NameofNewgesture 			{ width: 201px; float: Center; padding: 0px 0px 0px 15px; outline: none; font-size: 20px;  ;font-weight: bold; color: white; text-transform: uppercase; height: 50px; background: purple; border: 0px; }
-#create-new-gesture 		{ width: 102px; float: left; }
 #createGestureBlock img 	{ margin-left: 100px; } 
 
 #listofGestures 									 { list-style-type: none; margin-left: -40px; position: absolute; top: 80px; z-index: 99999; display: block; width: 338px; font-size: 16px; font-weight: bold; color: #FFF; text-transform:uppercase; }
@@ -21,27 +20,8 @@ body 				{ font-family: Calibri; margin: 0px; -ms-touch-action: none; overflow-x
 
 #listofGestures li.selected img.export-arrow 	 { display: none; }
 
-
-.overlay-open #listofGestures li 							{ display: none; }
-.overlay-open #listofGestures li.selected 					{ background: purple; width: 88%; display: block; }
-.overlay-open #listofGestures li.selected img 				{ background: purple; }
-.overlay-open #listofGestures li.selected img.export-arrow 	{ display: block; }
-.overlay-open #listofGestures li.selected .training-label 	{ display: none; }
-.overlay-open #listofGestures li.selected .export-gesture	{ display: block; }
-
-
-#shadeOverlay 											{ display: none; top: 0px; width: 100%; height: 1000px; position: absolute; z-index: 99998; background: #000; opacity: 0.7; }
-#overlay												{ display: none; width: 910px; height: 900px; padding: 20px; position: absolute; z-index: 99999; background: #FFF; color: #34495E; top: 20px; left: 380px; }
-#overlay textarea 										{ width: 99%; height: 510px; font-size: 16px; border: 2px solid #959595; color: 5D5D5D; outline: none; }
-#overlay div 											{ padding: 0px 20px; font-size: 20px; line-height: 40px; }
-
 #sample-import-code 									{ margin: 30px 0px; padding: 20px; border: 2px solid #FFF; background: #F3FBFC; }
 #exporting-gesture-name									{ text-transform:uppercase; }
-#close-overlay, #retrain-gesture						{ padding: 0px 25px; margin-top: 20px; background: purple; }
-#close-overlay											{ float: right; }
-
-.overlay-open #shadeOverlay							{ display: block; }
-.overlay-open #overlay									{ display: block; }
 
 #outputDisplayText											{ font-size: 24px; background: purple; width: 100%; position: absolute; height: 50px; line-height: 50px; top: 22px; text-align: center; }
 
